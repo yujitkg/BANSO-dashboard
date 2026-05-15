@@ -1,0 +1,12 @@
+# Raw monthly data should not be published.
+2026*/
+data/
+
+# Local/generated analysis artifacts.
+outputs/
+__pycache__/
+*.pyc
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db

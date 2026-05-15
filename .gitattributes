@@ -1,0 +1,8 @@
+*.html text eol=lf diff=html
+*.md text eol=lf
+*.py text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.nojekyll text eol=lf
