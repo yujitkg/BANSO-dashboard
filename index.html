@@ -30,7 +30,7 @@ details.panel{padding:0;overflow:hidden}details.panel>summary{list-style:none;cu
 <main class="page">
   <header class="topbar">
     <div><h1>分析ダッシュボード</h1><p id="subtitle" class="subtitle"></p><p class="updated-at">更新日時: 2026-05-15 20:44</p></div>
-    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select"></select></label></div>
+    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select"><option value="2025-11">2025-11</option><option value="2025-12">2025-12</option><option value="2026-01">2026-01</option><option value="2026-02">2026-02</option><option value="2026-03">2026-03</option><option value="2026-04" selected>2026-04</option></select></label></div>
   </header>
   <section id="alerts" class="alerts"><div class="alert">成約金額率：64.2% → 52.8%（-11.4pt）</div></section>
   <section class="panel focus"><div class="section-kicker">1. 結論</div><h2>エグゼクティブサマリー</h2><ul id="executive-summary" class="comment-list"><li>2026-04は成約率33.1%で、前月比-1.5pt。</li><li>全査定件数は354件で、前月比-28件。</li><li>全査定金額は5,085,805円で、前月比-283,844円。</li><li>成約金額は2,684,505円で、前月比-762,742円。</li><li>初回成約率は17.0%。5回以上ユーザーの65.8%と比べて-48.8pt。</li><li>未成約金額は2,401,300円で、前月比+478,898円。</li><li>成約金額率は64.2%→52.8%（-11.4pt）。金額面の未成約確認を優先します。</li><li>今月は件数よりも、金額の高い未成約が増えた月です。</li></ul></section>
@@ -192,11 +192,12 @@ document.addEventListener('input', e=>{
 document.addEventListener('change', e=>{
   if(e.target.id === 'high-value-category-filter'){ highValueState.category = e.target.value; render(); }
 });
-document.getElementById('month-select').addEventListener('click', e=>e.stopPropagation());
-document.getElementById('month-select').addEventListener('change', e=>{ state.month=e.target.value; render(); });
+const monthSelect = document.getElementById('month-select');
+monthSelect.innerHTML = DATA.months.map(m=>`<option value="${m}">${m}</option>`).join('');
+monthSelect.value = DATA.latestMonth;
+monthSelect.addEventListener('click', e=>e.stopPropagation());
+monthSelect.addEventListener('change', e=>{ state.month=e.target.value; render(); });
 document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
-document.getElementById('month-select').innerHTML = DATA.months.map(m=>`<option value="${m}">${m}</option>`).join('');
-document.getElementById('month-select').value = DATA.latestMonth;
 document.getElementById('charts').innerHTML = Object.entries(DATA.charts).filter(([,v])=>v).map(([k,v])=>`<figure><img src="${v}" alt="${k}"><figcaption>${k.replace('.png','')}</figcaption></figure>`).join('');
 initTheme();
 render();

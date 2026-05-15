@@ -2041,17 +2041,22 @@ document.addEventListener('input', e=>{
 document.addEventListener('change', e=>{
   if(e.target.id === 'high-value-category-filter'){ highValueState.category = e.target.value; render(); }
 });
-document.getElementById('month-select').addEventListener('click', e=>e.stopPropagation());
-document.getElementById('month-select').addEventListener('change', e=>{ state.month=e.target.value; render(); });
+const monthSelect = document.getElementById('month-select');
+monthSelect.innerHTML = DATA.months.map(m=>`<option value="${m}">${m}</option>`).join('');
+monthSelect.value = DATA.latestMonth;
+monthSelect.addEventListener('click', e=>e.stopPropagation());
+monthSelect.addEventListener('change', e=>{ state.month=e.target.value; render(); });
 document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
-document.getElementById('month-select').innerHTML = DATA.months.map(m=>`<option value="${m}">${m}</option>`).join('');
-document.getElementById('month-select').value = DATA.latestMonth;
 document.getElementById('charts').innerHTML = Object.entries(DATA.charts).filter(([,v])=>v).map(([k,v])=>`<figure><img src="${v}" alt="${k}"><figcaption>${k.replace('.png','')}</figcaption></figure>`).join('');
 initTheme();
 render();
 """
 
     updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    month_options = "".join(
+        f'<option value="{esc(month)}"{" selected" if month == latest_month else ""}>{esc(month)}</option>'
+        for month in months
+    )
     return f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -2065,7 +2070,7 @@ render();
 <main class="page">
   <header class="topbar">
     <div><h1>分析ダッシュボード</h1><p id="subtitle" class="subtitle"></p><p class="updated-at">更新日時: {updated_at}</p></div>
-    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select"></select></label></div>
+    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select">{month_options}</select></label></div>
   </header>
   <section id="alerts" class="alerts">{static_alerts}</section>
   <section class="panel focus"><div class="section-kicker">1. 結論</div><h2>エグゼクティブサマリー</h2><ul id="executive-summary" class="comment-list">{static_list(initial["executiveSummary"])}</ul></section>
