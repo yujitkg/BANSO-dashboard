@@ -158,7 +158,7 @@ function render(){
   const select = document.getElementById('month-select');
   if(select && select.value !== state.month) select.value = state.month;
   renderHighValueControls(d);
-  document.getElementById('subtitle').textContent = `査定月基準 / 前月比較: ${d.prevMonth || '-'}`;
+  document.getElementById('subtitle').textContent = `表示月: ${state.month} / 前月比較: ${d.prevMonth || '-'}`;
   document.getElementById('alerts').innerHTML = d.alerts.length ? d.alerts.map(x=>`<div class="alert">${x}</div>`).join('') : '<div class="alert-ok">重要アラートなし</div>';
   document.getElementById('executive-summary').innerHTML = d.executiveSummary.map(x=>`<li>${x}</li>`).join('');
   document.getElementById('cards').innerHTML = d.cards.map(c=>`<div class="card" data-target="${c.target}"><div><div class="card-label">${c.label}</div><div class="card-value">${c.value}</div></div><div><span class="card-delta-label">前月比</span>${deltaHtml(c.delta,c.goodUp)}</div></div>`).join('');
@@ -199,6 +199,7 @@ document.addEventListener('input', e=>{
   if(e.target.id === 'high-value-first-only'){ highValueState.firstOnly = e.target.checked; render(); }
 });
 document.addEventListener('change', e=>{
+  if(e.target.id === 'month-select'){ setMonth(e.target.value); return; }
   if(e.target.id === 'high-value-category-filter'){ highValueState.category = e.target.value; render(); }
 });
 const monthSelect = document.getElementById('month-select');
