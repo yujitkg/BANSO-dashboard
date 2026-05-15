@@ -1995,8 +1995,17 @@ function renderHighValueControls(d){
   }
 }
 function simpleRows(rows){ return rows.map(r=>({項目:r.項目, 値:r.値, 前月比:r.前月比})); }
+function setMonth(month){
+  if(!DATA.byMonth[month]) return;
+  state.month = month;
+  const select = document.getElementById('month-select');
+  if(select && select.value !== month) select.value = month;
+  render();
+}
 function render(){
   const d = DATA.byMonth[state.month];
+  const select = document.getElementById('month-select');
+  if(select && select.value !== state.month) select.value = state.month;
   renderHighValueControls(d);
   document.getElementById('subtitle').textContent = `査定月基準 / 前月比較: ${d.prevMonth || '-'}`;
   document.getElementById('alerts').innerHTML = d.alerts.length ? d.alerts.map(x=>`<div class="alert">${x}</div>`).join('') : '<div class="alert-ok">重要アラートなし</div>';
@@ -2045,7 +2054,8 @@ const monthSelect = document.getElementById('month-select');
 monthSelect.innerHTML = DATA.months.map(m=>`<option value="${m}">${m}</option>`).join('');
 monthSelect.value = DATA.latestMonth;
 monthSelect.addEventListener('click', e=>e.stopPropagation());
-monthSelect.addEventListener('change', e=>{ state.month=e.target.value; render(); });
+monthSelect.addEventListener('input', e=>setMonth(e.target.value));
+monthSelect.addEventListener('change', e=>setMonth(e.target.value));
 document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 document.getElementById('charts').innerHTML = Object.entries(DATA.charts).filter(([,v])=>v).map(([k,v])=>`<figure><img src="${v}" alt="${k}"><figcaption>${k.replace('.png','')}</figcaption></figure>`).join('');
 initTheme();
@@ -2070,7 +2080,7 @@ render();
 <main class="page">
   <header class="topbar">
     <div><h1>分析ダッシュボード</h1><p id="subtitle" class="subtitle"></p><p class="updated-at">更新日時: {updated_at}</p></div>
-    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select">{month_options}</select></label></div>
+    <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select" onchange="setMonth(this.value)">{month_options}</select></label></div>
   </header>
   <section id="alerts" class="alerts">{static_alerts}</section>
   <section class="panel focus"><div class="section-kicker">1. 結論</div><h2>エグゼクティブサマリー</h2><ul id="executive-summary" class="comment-list">{static_list(initial["executiveSummary"])}</ul></section>
