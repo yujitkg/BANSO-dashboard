@@ -1884,7 +1884,7 @@ def make_dashboard_summary_html(
 :root{--ink:#111827;--muted:#667085;--line:#e6eaf0;--line-strong:#d5dbe5;--soft:#f8fafc;--soft-2:#f3f6fa;--panel:#fff;--table-head:#f5f7fb;--row-alt:#fbfcfe;--row-hover:#f3f8ff;--input-bg:#fff;--good:#067647;--good-bg:#e6f6ec;--bad:#b42318;--bad-bg:#fff1f0;--flat:#475467;--flat-bg:#eef2f6;--blue:#175cd3;--blue-bg:#f4f8ff;--high-bg:#fff1f0;--high-hover:#ffe7e3;--shadow:0 1px 2px rgba(16,24,40,.04),0 10px 24px rgba(16,24,40,.05);--radius:12px}html.dark{--ink:#e5e7eb;--muted:#9ca3af;--line:#293241;--line-strong:#3b4658;--soft:#141a24;--soft-2:#1a2230;--panel:#111827;--table-head:#1f2937;--row-alt:#151d29;--row-hover:#213047;--input-bg:#0f172a;--good:#8be0b3;--good-bg:#123624;--bad:#ffb4ab;--bad-bg:#421815;--flat:#cbd5e1;--flat-bg:#263242;--blue:#93c5fd;--blue-bg:#13243b;--high-bg:#3a1717;--high-hover:#4a1f1f;--shadow:none}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif;line-height:1.62}
 .page{max-width:1240px;margin:0 auto;padding:42px 34px 72px}.topbar{display:flex;justify-content:space-between;gap:28px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:28px}
-h1{font-size:34px;line-height:1.15;letter-spacing:0;margin:0 0 8px;font-weight:760}.subtitle{margin:0;color:var(--muted);font-size:14px}.selector{display:flex;gap:10px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;color:var(--ink);font-weight:650;white-space:nowrap}.header-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:20}.header-tools button,.header-tools select{position:relative;z-index:21;pointer-events:auto}.selector select{min-width:118px;cursor:pointer}.updated-at{color:var(--muted);font-size:13px}.theme-toggle{white-space:nowrap}
+h1{font-size:34px;line-height:1.15;letter-spacing:0;margin:0 0 8px;font-weight:760}.subtitle{margin:0;color:var(--muted);font-size:14px}.selector{display:flex;gap:10px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;color:var(--ink);font-weight:650;white-space:nowrap}.header-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:20}.header-tools button,.header-tools select{position:relative;z-index:21;pointer-events:auto}.selector select{min-width:118px;cursor:pointer}.updated-at{color:var(--muted);font-size:13px}.theme-toggle{white-space:nowrap}.month-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}.month-tabs button{padding:8px 11px;border-radius:999px}.month-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff}
 select,input{font:inherit;border:1px solid var(--line-strong);border-radius:10px;background:var(--input-bg);padding:9px 11px;color:var(--ink);outline:none}select:focus,input:focus{border-color:#84adff;box-shadow:0 0 0 3px #2b5aa833}
 section{margin:30px 0}.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:24px;box-shadow:var(--shadow)}.panel.primary{border-color:#d7e4ff;background:var(--panel)}.panel.reading{padding:26px 28px}.section-kicker{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:760;text-transform:uppercase;margin-bottom:6px}
 h2{font-size:21px;line-height:1.25;margin:0 0 16px;font-weight:760}h3{font-size:15px;margin:20px 0 9px;color:var(--ink)}.grid{display:grid;gap:16px}.cards{grid-template-columns:repeat(auto-fit,minmax(176px,1fr));align-items:stretch}.card{min-height:142px;border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--panel);cursor:pointer;transition:box-shadow .16s ease,transform .16s ease,border-color .16s ease;display:flex;flex-direction:column;justify-content:space-between}.card:hover{box-shadow:0 16px 34px rgba(16,24,40,.10);transform:translateY(-2px);border-color:#bfd3ff}.card:active{transform:translateY(0)}
@@ -2000,12 +2000,18 @@ function setMonth(month){
   state.month = month;
   const select = document.getElementById('month-select');
   if(select && select.value !== month) select.value = month;
+  document.querySelectorAll('[data-month-tab]').forEach(button => {
+    button.classList.toggle('active', button.dataset.monthTab === month);
+  });
   render();
 }
 function render(){
   const d = DATA.byMonth[state.month];
   const select = document.getElementById('month-select');
   if(select && select.value !== state.month) select.value = state.month;
+  document.querySelectorAll('[data-month-tab]').forEach(button => {
+    button.classList.toggle('active', button.dataset.monthTab === state.month);
+  });
   renderHighValueControls(d);
   document.getElementById('subtitle').textContent = `表示月: ${state.month} / 前月比較: ${d.prevMonth || '-'}`;
   document.getElementById('alerts').innerHTML = d.alerts.length ? d.alerts.map(x=>`<div class="alert">${x}</div>`).join('') : '<div class="alert-ok">重要アラートなし</div>';
@@ -2034,6 +2040,8 @@ function render(){
 }
 document.addEventListener('input', e=>{ if(e.target.dataset.search) render(); });
 document.addEventListener('click', e=>{
+  const monthButton = e.target.closest('[data-month-tab]');
+  if(monthButton){ setMonth(monthButton.dataset.monthTab); return; }
   const th = e.target.closest('th[data-table]');
   if(th){ const id=th.dataset.table,key=th.dataset.key; state.sort[id] = {key, dir: state.sort[id]?.key===key ? -state.sort[id].dir : 1}; render(); return; }
   const card = e.target.closest('.card[data-target]');
@@ -2068,6 +2076,10 @@ render();
         f'<option value="{esc(month)}"{" selected" if month == latest_month else ""}>{esc(month)}</option>'
         for month in months
     )
+    month_tabs = "".join(
+        f'<button type="button" data-month-tab="{esc(month)}" class="{"active" if month == latest_month else ""}">{esc(month)}</button>'
+        for month in months
+    )
     return f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -2083,6 +2095,7 @@ render();
     <div><h1>分析ダッシュボード</h1><p id="subtitle" class="subtitle"></p><p class="updated-at">更新日時: {updated_at}</p></div>
     <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button">ダークモード</button><label class="selector">表示月 <select id="month-select" onchange="setMonth(this.value)">{month_options}</select></label></div>
   </header>
+  <nav class="month-tabs" aria-label="表示月">{month_tabs}</nav>
   <section id="alerts" class="alerts">{static_alerts}</section>
   <section class="panel focus"><div class="section-kicker">1. 結論</div><h2>エグゼクティブサマリー</h2><ul id="executive-summary" class="comment-list">{static_list(initial["executiveSummary"])}</ul></section>
   <section class="panel primary"><div class="section-kicker">2. 重要KPI</div><h2>KPIサマリー</h2><div id="cards" class="grid cards">{static_card_html(initial["cards"])}</div></section>
