@@ -10,3 +10,10 @@ __pycache__/
 # OS/editor noise.
 .DS_Store
 Thumbs.db
+# Generated reports when output is repository root.
+charts/
+dashboard_summary.html
+dashboard_summary.md
+report.md
+*_summary.csv
+deep_dive_unconverted.csv
