@@ -89,9 +89,17 @@ def detect_encoding(path: Path) -> str:
 def read_csv(path: Path) -> pd.DataFrame:
     encoding = detect_encoding(path)
     try:
-        return pd.read_csv(path, encoding=encoding, dtype=str, keep_default_na=False)
+        df = pd.read_csv(path, encoding=encoding, dtype=str, keep_default_na=False)
+        return normalize_csv_columns(df)
     except Exception as exc:
         raise RuntimeError(f"CSV読み込みに失敗しました: file={path}, encoding={encoding}, error={exc}") from exc
+
+
+def normalize_csv_columns(df: pd.DataFrame) -> pd.DataFrame:
+    columns = [str(col).strip() for col in df.columns]
+    if columns and re.fullmatch(r"\d+", columns[0]) and "成約区分" in columns:
+        df = df.rename(columns={df.columns[0]: "データNo"})
+    return df
 
 
 def normalize_month(folder: Path) -> str | None:
