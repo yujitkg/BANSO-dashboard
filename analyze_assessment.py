@@ -41,6 +41,7 @@ COLUMN_ALIASES = {
     "amount": ["査定合計金額", "査定金額", "査定額", "合計金額", "買取金額", "見積金額"],
     "repeat": ["買取歴", "利用回数", "買取回数", "リピート回数", "取引回数"],
     "method": ["査定方法", "受付方法", "申込方法", "問い合わせ方法"],
+    "staff": ["査定担当者", "査定担当", "担当者", "担当", "スタッフ", "作業者"],
     "item_count": ["アイテム数", "点数", "商品点数", "数量", "品数"],
     "item": ["アイテム", "商品カテゴリ", "カテゴリ"],
     "detail_category": ["カテゴリ", "商品カテゴリ", "分類", "ジャンル"],
@@ -58,6 +59,7 @@ AMOUNT_BANDS = [
 CATEGORIES = ["コスメ", "香水", "サプリ", "家電", "その他"]
 METHODS = ["LINE", "メール", "その他"]
 REPEAT_GROUPS = ["初回ユーザー", "2回目以上ユーザー", "5回以上ユーザー"]
+STAFF_NAMES = ["脇田", "相澤"]
 
 
 def log(message: str) -> None:
@@ -251,6 +253,7 @@ def load_main(month: str, status: str, path: Path) -> pd.DataFrame:
     amount_col = find_column(df, "amount", path)
     repeat_col = find_column(df, "repeat", path, required=False)
     method_col = find_column(df, "method", path, required=False)
+    staff_col = find_column(df, "staff", path, required=False)
     item_count_col = find_column(df, "item_count", path, required=False)
     item_col = find_column(df, "item", path, required=False)
 
@@ -264,6 +267,7 @@ def load_main(month: str, status: str, path: Path) -> pd.DataFrame:
     out["repeat_count"] = out["repeat_raw"].map(repeat_count)
     out["repeat_group"] = out["repeat_count"].map(repeat_group_from_count)
     out["method"] = (df[method_col] if method_col else "").map(classify_method) if method_col else "その他"
+    out["staff"] = df[staff_col].astype(str).str.strip() if staff_col else ""
     out["main_category"] = (df[item_col] if item_col else "").map(classify_category) if item_col else "その他"
     out["item_count_main"] = [parse_number(v, path, item_count_col) for v in df[item_count_col]] if item_count_col else 0.0
     out["source_file"] = path.name
@@ -1479,6 +1483,49 @@ def make_dashboard_summary_html(
                 }
             )
 
+        staff_rows = []
+        prev_df = df[df["month"] == prev] if prev else pd.DataFrame(columns=df.columns)
+        for staff_name in STAFF_NAMES:
+            staff_df = current_df[current_df["staff"].eq(staff_name)]
+            prev_staff_df = prev_df[prev_df["staff"].eq(staff_name)] if prev else pd.DataFrame(columns=df.columns)
+            converted = int((staff_df["status"] == "成約").sum())
+            unconverted = int((staff_df["status"] == "未成約").sum())
+            total = converted + unconverted
+            prev_converted = int((prev_staff_df["status"] == "成約").sum()) if len(prev_staff_df) else 0
+            prev_total = len(prev_staff_df)
+            rate = conversion_rate(converted, total)
+            prev_rate = conversion_rate(prev_converted, prev_total) if prev_total else None
+            first_df = staff_df[staff_df["repeat_count"] <= 1]
+            first_converted = int((first_df["status"] == "成約").sum())
+            first_rate = conversion_rate(first_converted, len(first_df))
+            high_unconverted_count = int(((staff_df["status"] == "未成約") & (staff_df["amount"] >= 10000)).sum())
+            top_category = staff_df["category"].mode().iloc[0] if len(staff_df) else "-"
+            top_method = staff_df["method"].mode().iloc[0] if len(staff_df) else "-"
+            avg_amount = round(float(staff_df["amount"].mean()), 1) if len(staff_df) else 0
+            staff_rows.append(
+                {
+                    "担当者": staff_name,
+                    "成約件数": f"{converted}件",
+                    "成約件数Raw": converted,
+                    "未成約件数": f"{unconverted}件",
+                    "未成約件数Raw": unconverted,
+                    "全査定件数": f"{total}件",
+                    "全査定件数Raw": total,
+                    "成約率": pct(rate),
+                    "成約率Raw": rate,
+                    "前月比": diff_pt(rate, prev_rate),
+                    "平均査定額": yen(avg_amount),
+                    "平均査定額Raw": avg_amount,
+                    "初回成約率": pct(first_rate),
+                    "初回成約率Raw": first_rate,
+                    "高額未成約": f"{high_unconverted_count}件",
+                    "高額未成約Raw": high_unconverted_count,
+                    "最多カテゴリ": top_category,
+                    "最多査定方法": top_method,
+                    "特徴": f"最多カテゴリ {top_category} / 査定方法 {top_method} / 10,000円以上未成約 {high_unconverted_count}件",
+                }
+            )
+
         trend_start = max(0, idx - 5)
         trend_months = months[trend_start : idx + 1]
         trend_rows = []
@@ -1804,6 +1851,7 @@ def make_dashboard_summary_html(
             ],
             "segmentRows": segment_rows,
             "topRows": top_rows,
+            "staffRows": staff_rows,
             "highValueUnconvertedRows": high_value_unconverted_rows,
             "trendRows": trend_rows,
         }
@@ -1862,7 +1910,7 @@ def make_dashboard_summary_html(
 
     def static_table_from_dicts(headers: list[str], rows: list[dict[str, object]]) -> str:
         def column_class(header: str) -> str:
-            text_headers = {"セグメント", "改善対象", "コメント", "理由", "区分", "対象", "項目", "優先区分", "優先理由", "優先度", "カテゴリ", "方法", "査定方法", "利用回数", "初回/リピート", "データNo", "評価", "月"}
+            text_headers = {"セグメント", "改善対象", "コメント", "理由", "区分", "対象", "項目", "優先区分", "優先理由", "優先度", "カテゴリ", "方法", "査定方法", "利用回数", "初回/リピート", "データNo", "評価", "月", "担当者", "最多カテゴリ", "最多査定方法", "特徴"}
             numeric_words = ("件数", "金額", "成約率", "前月比", "差分", "平均査定額", "査定金額合計", "査定額", "点数", "順位", "値", "今月", "前月", "成約", "未成約", "全査定")
             if header in text_headers:
                 return "text"
@@ -1934,7 +1982,7 @@ function deltaHtml(delta, goodUp=true){ return `<span class="delta ${cls(delta, 
 function parseNum(v){ return Number(String(v ?? '').replace(/[^\\d.-]/g,'')) || 0; }
 function isNumericCell(value){ return /[-+]?\\d/.test(String(value ?? '')) && /(%|円|件|pt|点|^[\\d,.-]+$)/.test(String(value ?? '')); }
 function columnClass(header){
-  const textHeaders = new Set(['セグメント','改善対象','コメント','理由','区分','対象','項目','優先区分','優先理由','優先度','カテゴリ','方法','査定方法','利用回数','初回/リピート','データNo','評価','月']);
+  const textHeaders = new Set(['セグメント','改善対象','コメント','理由','区分','対象','項目','優先区分','優先理由','優先度','カテゴリ','方法','査定方法','利用回数','初回/リピート','データNo','評価','月','担当者','最多カテゴリ','最多査定方法','特徴']);
   const numericWords = ['件数','金額','成約率','前月比','差分','平均査定額','査定金額合計','査定額','点数','順位','値','今月','前月','成約','未成約','全査定'];
   if(textHeaders.has(header)) return 'text';
   return numericWords.some(word => String(header).includes(word)) ? 'num' : 'text';
@@ -2032,6 +2080,7 @@ function render(){
   table('repeat-segment-table', ['区分','成約件数','未成約件数','成約率','成約金額','前月比'], d.repeatSegmentRows);
   table('amount-segment-table', ['区分','成約件数','未成約件数','成約率','成約金額','前月比'], d.amountSegmentRows);
   table('category-segment-table', ['区分','成約件数','未成約件数','成約率','成約金額','前月比'], d.categorySegmentRows);
+  table('staff-table', ['担当者','成約件数','未成約件数','全査定件数','成約率','前月比','平均査定額','初回成約率','高額未成約','最多カテゴリ','最多査定方法','特徴'], d.staffRows);
   table('deep-dive-table', ['優先区分','対象','件数','査定金額合計','平均査定額','前月比'], d.deepDiveRows);
   table('priority-table', ['優先順位','改善対象','理由','件数','金額合計'], d.priorityRows);
   document.getElementById('next-checks').innerHTML = d.nextChecks.map(x=>`<li>${x}</li>`).join('');
@@ -2100,6 +2149,7 @@ render();
   <section id="repeat-segment" class="panel"><div class="section-kicker">5. セグメント別分析</div><h2>利用回数別</h2><div id="repeat-segment-table" class="table-wrap">{static_table_from_dicts(["区分","成約件数","未成約件数","成約率","成約金額","前月比"], initial["repeatSegmentRows"])}</div></section>
   <section class="panel"><h2>金額帯別</h2><div class="table-tools"><input class="search" data-search="amount-segment-table" placeholder="金額帯で検索"></div><div id="amount-segment-table" class="table-wrap">{static_table_from_dicts(["区分","成約件数","未成約件数","成約率","成約金額","前月比"], initial["amountSegmentRows"])}</div></section>
   <section class="panel"><h2>カテゴリ別</h2><div class="table-tools"><input class="search" data-search="category-segment-table" placeholder="カテゴリで検索"></div><div id="category-segment-table" class="table-wrap">{static_table_from_dicts(["区分","成約件数","未成約件数","成約率","成約金額","前月比"], initial["categorySegmentRows"])}</div></section>
+  <section class="panel"><h2>査定担当者別分析</h2><p class="flow-note">対象は担当者欄が完全一致の「脇田」「相澤」のみです。引き継ぎ表記は除外しています。</p><div class="table-tools"><input class="search" data-search="staff-table" placeholder="担当者・カテゴリ・特徴で検索"></div><div id="staff-table" class="table-wrap">{static_table_from_dicts(["担当者","成約件数","未成約件数","全査定件数","成約率","前月比","平均査定額","初回成約率","高額未成約","最多カテゴリ","最多査定方法","特徴"], initial["staffRows"])}</div></section>
   <section id="deep-dive" class="panel"><div class="section-kicker">6. 未成約の深掘り</div><h2>未成約深掘り</h2><div id="deep-dive-table" class="table-wrap">{static_table_from_dicts(["優先区分","対象","件数","査定金額合計","平均査定額","前月比"], initial["deepDiveRows"])}</div></section>
   <section class="panel"><div class="section-kicker">7. 改善優先度</div><h2>改善優先度</h2><div id="priority-table" class="table-wrap">{static_table_from_dicts(["優先順位","改善対象","理由","件数","金額合計"], initial["priorityRows"])}</div></section>
   <section class="panel"><div class="section-kicker">8. 次に確認すべきこと</div><h2>次に確認すべきこと</h2><ul id="next-checks" class="comment-list">{static_list(initial["nextChecks"])}</ul></section>
