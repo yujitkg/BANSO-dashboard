@@ -7,10 +7,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0test_gas_endpoint.ps1"
 if errorlevel 1 (
   echo.
   echo GAS endpoint test failed. Please check gas_endpoint_test_log.txt.
-  pause
   exit /b 1
 )
 
 echo.
 echo GAS endpoint test completed.
-pause

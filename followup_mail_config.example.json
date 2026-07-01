@@ -2,5 +2,6 @@
   "WebAppUrl": "https://script.google.com/macros/s/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/exec",
   "To": "takagi@y-takumi.jp",
   "Token": "任意の合言葉",
-  "DashboardUrl": "https://yujitkg.github.io/BANSO-dashboard/?v=mail"
+  "DashboardUrl": "https://yujitkg.github.io/BANSO-dashboard/?v=mail",
+  "SourceUrl": "https://raw.githubusercontent.com/yujitkg/BANSO-dashboard/master/index.html"
 }

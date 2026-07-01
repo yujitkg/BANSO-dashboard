@@ -7,10 +7,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0test_followup_mail_gas
 if errorlevel 1 (
   echo.
   echo GAS mail test failed. Please check gas_mail_test_log.txt.
-  pause
   exit /b 1
 )
 
 echo.
 echo GAS mail test completed. Please check your inbox.
-pause

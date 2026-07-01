@@ -12,6 +12,7 @@ gas_endpoint_test_log.txt
 gas_mail_test_log.txt
 followup_mail_send_log.txt
 satei_auto_update.log
+satei_auto_update_*.log
 dashboard_update.log
 
 # OS/editor noise.

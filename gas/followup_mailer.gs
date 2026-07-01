@@ -1,5 +1,5 @@
 const TOKEN_PROPERTY = 'FOLLOWUP_MAIL_TOKEN';
-const APP_VERSION = '2026-07-01-html-mail-v1';
+const APP_VERSION = '2026-07-01-month-mail-v1';
 
 function doGet(e) {
   try {
@@ -26,8 +26,10 @@ function doGet(e) {
     if (action === 'sendDashboard') {
       const to = String(params.to || '').trim();
       const dashboardUrl = String(params.dashboardUrl || '').trim();
+      const sourceUrl = String(params.sourceUrl || dashboardUrl).trim();
+      const month = String(params.month || '').trim();
       if (!to || !dashboardUrl) return jsonResponse_({ ok: false, error: 'missing to or dashboardUrl' });
-      const result = sendDashboardFollowup_(to, dashboardUrl);
+      const result = sendDashboardFollowup_(to, dashboardUrl, month, sourceUrl);
       return jsonResponse_({ ok: true, action, sentTo: to, month: result.month, count: result.count });
     }
 
@@ -99,14 +101,17 @@ function getParams_(e) {
   return e && e.parameter ? e.parameter : {};
 }
 
-function sendDashboardFollowup_(to, dashboardUrl) {
-  const response = UrlFetchApp.fetch(dashboardUrl, { muteHttpExceptions: true });
+function sendDashboardFollowup_(to, dashboardUrl, requestedMonth, sourceUrl) {
+  const response = UrlFetchApp.fetch(sourceUrl || dashboardUrl, { muteHttpExceptions: true });
   const html = response.getContentText('UTF-8');
   const match = html.match(/<script id="dashboard-data" type="application\/json">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('dashboard-data was not found');
 
   const data = JSON.parse(match[1].replace(/<\\\//g, '</'));
-  const month = data.latestMonth;
+  const month = requestedMonth || data.latestMonth;
+  if (!data.byMonth[month]) {
+    throw new Error('target month was not found in dashboard-data: ' + month);
+  }
   const rows = ((data.byMonth[month] || {}).highValueUnconvertedRows || []).slice();
   rows.sort(function(a, b) {
     const pa = Number(a['優先度Raw'] || 99);

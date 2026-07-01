@@ -1,5 +1,6 @@
 param(
-  [string]$RepoDir = $PSScriptRoot
+  [string]$RepoDir = $PSScriptRoot,
+  [string]$MailMonth = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,22 +19,6 @@ Write-Host "Updating dashboard..."
 & $python "analyze_assessment.py" --root $dataRoot --output "outputs" --no-open
 if ($LASTEXITCODE -ne 0) {
   throw "Dashboard update failed."
-}
-
-if (Test-Path -LiteralPath "outputs\followup_high_value_unconverted.csv") {
-  Write-Host ""
-  Write-Host "Sending follow-up email via Google Apps Script..."
-  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoDir "send_followup_email_gas.ps1") -OutputDir (Join-Path $RepoDir "outputs") -ConfigPath (Join-Path $RepoDir "followup_mail_config.json")
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host ""
-    Write-Host "GAS email send failed. Opening draft instead..."
-    $draft = Join-Path $RepoDir "outputs\followup_high_value_unconverted.eml"
-    if (Test-Path -LiteralPath $draft) {
-      Start-Process -FilePath $draft
-    }
-  } else {
-    $mailSent = $true
-  }
 }
 
 Write-Host ""
@@ -86,6 +71,32 @@ Write-Host "Pushing to GitHub..."
 & git push origin master
 if ($LASTEXITCODE -ne 0) {
   throw "Git push failed. Please check authentication."
+}
+
+if (Test-Path -LiteralPath "outputs\followup_high_value_unconverted.csv") {
+  Write-Host ""
+  Write-Host "Sending follow-up email via Google Apps Script..."
+  $mailArgs = @(
+    "-NoProfile",
+    "-ExecutionPolicy", "Bypass",
+    "-File", (Join-Path $RepoDir "send_followup_email_gas.ps1"),
+    "-OutputDir", (Join-Path $RepoDir "outputs"),
+    "-ConfigPath", (Join-Path $RepoDir "followup_mail_config.json")
+  )
+  if (-not [string]::IsNullOrWhiteSpace($MailMonth)) {
+    $mailArgs += @("-Month", $MailMonth)
+  }
+  & powershell @mailArgs
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "GAS email send failed. Opening draft instead..."
+    $draft = Join-Path $RepoDir "outputs\followup_high_value_unconverted.eml"
+    if (Test-Path -LiteralPath $draft) {
+      Start-Process -FilePath $draft
+    }
+  } else {
+    $mailSent = $true
+  }
 }
 
 Write-Host ""

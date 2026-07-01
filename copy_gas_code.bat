@@ -6,10 +6,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0copy_gas_code.ps1" -So
 if errorlevel 1 (
   echo.
   echo Copy failed. Please open gas\followup_mailer.gs and copy it manually.
-  pause
   exit /b 1
 )
 
 echo.
 echo Done.
-pause

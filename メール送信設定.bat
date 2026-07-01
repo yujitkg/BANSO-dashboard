@@ -7,10 +7,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup_followup_mail_co
 if errorlevel 1 (
   echo.
   echo Setup failed. Please check the message above.
-  pause
   exit /b 1
 )
 
 echo.
 echo Setup completed.
-pause

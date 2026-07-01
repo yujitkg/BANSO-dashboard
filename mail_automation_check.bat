@@ -11,7 +11,6 @@ if errorlevel 1 (
   echo 2. Paste into Apps Script
   echo 3. Save and deploy a new version
   echo 4. Run this check again
-  pause
   exit /b 1
 )
 
@@ -21,11 +20,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0test_followup_mail_gas
 if errorlevel 1 (
   echo.
   echo Test mail failed. Please check gas_mail_test_log.txt.
-  pause
   exit /b 1
 )
 
 echo.
 echo Mail automation check completed.
 echo If the test mail arrived, run dashboard_update.bat or the Japanese dashboard update batch.
-pause

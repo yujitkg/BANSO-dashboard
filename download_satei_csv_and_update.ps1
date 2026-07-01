@@ -145,17 +145,17 @@ foreach ($file in $response.files) {
   Write-Step "Saved $safeName to $targetDir"
 }
 
-Write-Step "Starting dashboard_update.bat..."
-$updateBat = Join-Path $repoDir "dashboard_update.bat"
-if (-not (Test-Path -LiteralPath $updateBat)) {
-  throw "dashboard_update.bat was not found: $updateBat"
+Write-Step "Starting dashboard update for mail month $Month..."
+$updateScript = Join-Path $repoDir "dashboard_update.ps1"
+if (-not (Test-Path -LiteralPath $updateScript)) {
+  throw "dashboard_update.ps1 was not found: $updateScript"
 }
 
 Push-Location $repoDir
 try {
-  & cmd /c "`"$updateBat`""
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $updateScript -RepoDir $repoDir -MailMonth $Month
   if ($LASTEXITCODE -ne 0) {
-    throw "dashboard_update.bat failed with exit code $LASTEXITCODE"
+    throw "dashboard_update.ps1 failed with exit code $LASTEXITCODE"
   }
 } finally {
   Pop-Location

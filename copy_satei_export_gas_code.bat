@@ -6,9 +6,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\copy_satei_export_ga
 if errorlevel 1 (
   echo.
   echo Copy failed.
-  pause
   exit /b 1
 )
 echo.
 echo Done.
-pause
