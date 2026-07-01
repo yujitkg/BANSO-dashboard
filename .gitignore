@@ -6,6 +6,10 @@ data/
 outputs/
 __pycache__/
 *.pyc
+followup_mail_config.json
+gas_endpoint_test_log.txt
+gas_mail_test_log.txt
+followup_mail_send_log.txt
 
 # OS/editor noise.
 .DS_Store

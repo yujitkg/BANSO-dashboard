@@ -11,6 +11,7 @@ import re
 import sys
 import webbrowser
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Iterable
 
@@ -60,6 +61,7 @@ CATEGORIES = ["コスメ", "香水", "サプリ", "家電", "その他"]
 METHODS = ["LINE", "メール", "その他"]
 REPEAT_GROUPS = ["初回ユーザー", "2回目以上ユーザー", "5回以上ユーザー"]
 STAFF_NAMES = ["脇田", "相澤"]
+FOLLOWUP_EMAIL_TO = "takagi@y-takumi.jp"
 
 
 def log(message: str) -> None:
@@ -184,6 +186,17 @@ def repeat_group_from_count(count: int) -> str:
     if count >= 2:
         return "2回目以上ユーザー"
     return "初回ユーザー"
+
+
+def high_value_priority_values(repeat_count: int, amount: float) -> tuple[str, int, str]:
+    is_first = repeat_count <= 1
+    if is_first and amount >= 20000:
+        return "S", 1, "初回かつ20,000円以上"
+    if is_first and amount >= 10000:
+        return "A", 2, "初回かつ10,000円以上"
+    if not is_first and amount >= 20000:
+        return "B", 3, "リピーター20,000円以上"
+    return "C", 4, "その他"
 
 
 def classify_method(value: object) -> str:
@@ -1449,19 +1462,16 @@ def make_dashboard_summary_html(
             )
 
         def high_value_priority(row: pd.Series) -> tuple[str, int, str]:
-            is_first = row["repeat_count"] <= 1
-            amount = float(row["amount"])
-            if is_first and amount >= 20000:
-                return "S", 1, "初回かつ20,000円以上"
-            if is_first and amount >= 10000:
-                return "A", 2, "初回かつ10,000円以上"
-            if not is_first and amount >= 20000:
-                return "B", 3, "リピーター20,000円以上"
-            return "C", 4, "その他"
+            return high_value_priority_values(int(row["repeat_count"]), float(row["amount"]))
 
         high_value_unconverted_rows = []
-        high_value_unconverted = current_unconverted[current_unconverted["amount"] >= 10000].sort_values(
-            ["amount", "data_no"], ascending=[False, True]
+        high_value_unconverted = current_unconverted[current_unconverted["amount"] >= 10000].copy()
+        high_value_unconverted["_priority_order"] = [
+            high_value_priority_values(int(row["repeat_count"]), float(row["amount"]))[1]
+            for _, row in high_value_unconverted.iterrows()
+        ]
+        high_value_unconverted = high_value_unconverted.sort_values(
+            ["_priority_order", "amount", "data_no"], ascending=[True, False, True]
         )
         for _, row in high_value_unconverted.iterrows():
             priority, priority_raw, comment = high_value_priority(row)
@@ -1943,23 +1953,23 @@ def make_dashboard_summary_html(
     )
 
     css = """
-:root{--ink:#111827;--muted:#667085;--line:#e6eaf0;--line-strong:#d5dbe5;--soft:#f8fafc;--soft-2:#f3f6fa;--panel:#fff;--table-head:#f5f7fb;--row-alt:#fbfcfe;--row-hover:#f3f8ff;--input-bg:#fff;--good:#067647;--good-bg:#e6f6ec;--bad:#b42318;--bad-bg:#fff1f0;--flat:#475467;--flat-bg:#eef2f6;--blue:#175cd3;--blue-bg:#f4f8ff;--high-bg:#fff1f0;--high-hover:#ffe7e3;--shadow:0 1px 2px rgba(16,24,40,.04),0 10px 24px rgba(16,24,40,.05);--radius:12px}html.dark{--ink:#e5e7eb;--muted:#9ca3af;--line:#293241;--line-strong:#3b4658;--soft:#141a24;--soft-2:#1a2230;--panel:#111827;--table-head:#1f2937;--row-alt:#151d29;--row-hover:#213047;--input-bg:#0f172a;--good:#8be0b3;--good-bg:#123624;--bad:#ffb4ab;--bad-bg:#421815;--flat:#cbd5e1;--flat-bg:#263242;--blue:#93c5fd;--blue-bg:#13243b;--high-bg:#3a1717;--high-hover:#4a1f1f;--shadow:none}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif;line-height:1.62}
-.page{max-width:1240px;margin:0 auto;padding:42px 34px 72px}.topbar{display:flex;justify-content:space-between;gap:28px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:28px}
-h1{font-size:34px;line-height:1.15;letter-spacing:0;margin:0 0 8px;font-weight:760}.subtitle{margin:0;color:var(--muted);font-size:14px}.selector{display:flex;gap:10px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;color:var(--ink);font-weight:650;white-space:nowrap}.header-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:20}.header-tools button,.header-tools select{position:relative;z-index:21;pointer-events:auto}.selector select{min-width:118px;cursor:pointer}.updated-at{color:var(--muted);font-size:13px}.theme-toggle{white-space:nowrap}
-select,input{font:inherit;border:1px solid var(--line-strong);border-radius:10px;background:var(--input-bg);padding:9px 11px;color:var(--ink);outline:none}select:focus,input:focus{border-color:#84adff;box-shadow:0 0 0 3px #2b5aa833}
-section{margin:30px 0}.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:24px;box-shadow:var(--shadow)}.panel.primary{border-color:#d7e4ff;background:var(--panel)}.panel.reading{padding:26px 28px}.section-kicker{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:760;text-transform:uppercase;margin-bottom:6px}
-h2{font-size:21px;line-height:1.25;margin:0 0 16px;font-weight:760}h3{font-size:15px;margin:20px 0 9px;color:var(--ink)}.grid{display:grid;gap:16px}.cards{grid-template-columns:repeat(auto-fit,minmax(176px,1fr));align-items:stretch}.card{min-height:142px;border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--panel);cursor:pointer;transition:box-shadow .16s ease,transform .16s ease,border-color .16s ease;display:flex;flex-direction:column;justify-content:space-between}.card:hover{box-shadow:0 16px 34px rgba(16,24,40,.10);transform:translateY(-2px);border-color:#bfd3ff}.card:active{transform:translateY(0)}
-.card-label{font-size:13px;color:var(--muted);font-weight:700}.card-value{font-size:36px;line-height:1.05;font-weight:780;margin:10px 0 12px;letter-spacing:-.01em}.card-delta-label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}.delta{display:inline-block;font-weight:760;padding:3px 10px;border-radius:999px;font-size:13px}.good{color:var(--good);background:var(--good-bg)}.bad{color:var(--bad);background:var(--bad-bg)}.neutral{color:var(--flat);background:var(--flat-bg)}
-.alerts{display:grid;gap:12px;margin:24px 0}.alert{border:1px solid #ffd0cc;border-left:6px solid var(--bad);background:var(--bad-bg);border-radius:var(--radius);padding:14px 16px;font-weight:760}.alert-ok{border:1px solid var(--line);background:var(--soft);border-radius:var(--radius);padding:12px 14px;color:var(--muted);font-weight:700}
-.focus{background:var(--blue-bg);border-color:#cfe0ff}.focus h2{color:#123b7a}.focus ul,.comment-list{margin:0;padding-left:20px}.focus li,.comment-list li{margin:7px 0}.comment-list li{font-size:15.5px}.flow-note{font-size:13px;color:var(--muted);margin:-5px 0 16px}
-.table-tools{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:4px 0 14px}.search{min-width:300px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);max-height:560px}
-button{font:inherit;border:1px solid var(--line-strong);border-radius:10px;background:var(--input-bg);padding:9px 13px;color:var(--ink);font-weight:700;cursor:pointer}button:hover{background:var(--row-hover)}.filter-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 14px}.filter-tools label{display:flex;gap:7px;align-items:center;color:var(--ink);font-weight:650}.filter-tools input[type="checkbox"]{width:16px;height:16px}.filter-tools .search{min-width:260px}.high-rank td{background:var(--high-bg)}.high-rank:hover td{background:var(--high-hover)}
-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel)}th,td{padding:15px 16px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:left;vertical-align:middle}th{position:sticky;top:0;z-index:2;background:var(--table-head);font-size:13px;font-weight:780;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line-strong)}td.text,th.text{text-align:left;white-space:normal;min-width:180px}td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}#priority-table th:nth-child(2),#priority-table td:nth-child(2),#priority-table th:nth-child(3),#priority-table td:nth-child(3),#deep-dive-table th:nth-child(1),#deep-dive-table td:nth-child(1),#deep-dive-table th:nth-child(2),#deep-dive-table td:nth-child(2),#segments-table th:first-child,#segments-table td:first-child,#segments-table th:last-child,#segments-table td:last-child{text-align:left;white-space:normal;min-width:220px}#priority-table th:nth-child(1),#priority-table td:nth-child(1),#priority-table th:nth-child(4),#priority-table td:nth-child(4),#priority-table th:nth-child(5),#priority-table td:nth-child(5),#deep-dive-table th:nth-child(n+3),#deep-dive-table td:nth-child(n+3),#segments-table th:nth-child(n+2):nth-child(-n+5),#segments-table td:nth-child(n+2):nth-child(-n+5){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}td:first-child,th:first-child{text-align:left}tbody tr:nth-child(even){background:var(--row-alt)}tbody tr:hover{background:var(--row-hover)}tbody tr:last-child td{border-bottom:0}.sort-mark{font-size:11px;color:#98a2b3;margin-left:6px}
-details.panel{padding:0;overflow:hidden}details.panel>summary{list-style:none;cursor:pointer;padding:20px 24px;font-size:20px;font-weight:780;display:flex;align-items:center;justify-content:space-between;gap:18px;border-radius:var(--radius);transition:background-color .16s ease}details.panel>summary:hover{background:var(--row-hover)}details.panel>summary::-webkit-details-marker{display:none}details.panel>summary::after{content:"▶";font-size:15px;color:#667085;transition:transform .18s ease}details.panel[open]>summary{border-bottom:1px solid var(--line);border-bottom-left-radius:0;border-bottom-right-radius:0}details.panel[open]>summary::after{content:"▼"}.details-body{padding:18px 24px 24px;animation:openSection .18s ease-out}@keyframes openSection{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+:root{--ink:#182230;--muted:#667085;--line:#e4e7ec;--line-strong:#cfd5df;--soft:#f6f7f9;--soft-2:#eef2f6;--panel:#fff;--table-head:#f2f4f7;--row-alt:#fafbfc;--row-hover:#eef6ff;--input-bg:#fff;--good:#067647;--good-bg:#e7f6ec;--bad:#b42318;--bad-bg:#fff1f0;--flat:#475467;--flat-bg:#eef2f6;--blue:#175cd3;--blue-bg:#edf5ff;--teal:#0f766e;--teal-bg:#ecfdf5;--high-bg:#fff0ec;--high-hover:#ffe2da;--shadow:0 1px 2px rgba(16,24,40,.05),0 12px 28px rgba(16,24,40,.07);--radius:10px}html.dark{--ink:#e5e7eb;--muted:#a3acba;--line:#293241;--line-strong:#445067;--soft:#0e141d;--soft-2:#151d29;--panel:#111827;--table-head:#202a39;--row-alt:#151d29;--row-hover:#213047;--input-bg:#0f172a;--good:#8be0b3;--good-bg:#123624;--bad:#ffb4ab;--bad-bg:#421815;--flat:#cbd5e1;--flat-bg:#263242;--blue:#93c5fd;--blue-bg:#12243a;--teal:#7dd3c7;--teal-bg:#102f2c;--high-bg:#3a1717;--high-hover:#4a1f1f;--shadow:none}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif;line-height:1.58}
+.page{max-width:1280px;margin:0 auto;padding:34px 32px 72px}.topbar{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;gap:28px;align-items:flex-start;margin:0 -12px 26px;padding:18px 12px 20px;background:color-mix(in srgb,var(--soft) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+h1{font-size:30px;line-height:1.15;letter-spacing:0;margin:0 0 8px;font-weight:800}.subtitle{margin:0;color:var(--muted);font-size:14px}.updated-at{color:var(--muted);font-size:13px;margin:6px 0 0}.header-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:20}.selector{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:var(--ink);font-weight:700;white-space:nowrap;box-shadow:0 1px 2px rgba(16,24,40,.04)}.selector select{min-width:118px;cursor:pointer}.theme-toggle{white-space:nowrap}
+select,input{font:inherit;border:1px solid var(--line-strong);border-radius:8px;background:var(--input-bg);padding:9px 11px;color:var(--ink);outline:none}select:focus,input:focus{border-color:#84adff;box-shadow:0 0 0 3px #2b5aa833}
+section{margin:24px 0}.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:22px;box-shadow:var(--shadow)}.panel.primary{border-color:#cfe0ff;background:var(--panel)}.panel.reading{padding:24px}.section-kicker{font-size:12px;letter-spacing:.08em;color:var(--teal);font-weight:800;text-transform:uppercase;margin-bottom:6px}
+h2{font-size:20px;line-height:1.25;margin:0 0 15px;font-weight:800}h3{font-size:15px;margin:22px 0 9px;color:var(--ink);font-weight:800}.grid{display:grid;gap:14px}.cards{grid-template-columns:repeat(auto-fit,minmax(176px,1fr));align-items:stretch}.card{min-height:132px;border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:var(--panel);cursor:pointer;transition:box-shadow .16s ease,transform .16s ease,border-color .16s ease;display:flex;flex-direction:column;justify-content:space-between}.card:hover{box-shadow:0 16px 34px rgba(16,24,40,.10);transform:translateY(-2px);border-color:#b7cdfd}.card:active{transform:translateY(0)}
+.card-label{font-size:12.5px;color:var(--muted);font-weight:800}.card-value{font-size:32px;line-height:1.05;font-weight:820;margin:10px 0 12px}.card-delta-label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}.delta{display:inline-block;font-weight:800;padding:3px 10px;border-radius:999px;font-size:13px}.good{color:var(--good);background:var(--good-bg)}.bad{color:var(--bad);background:var(--bad-bg)}.neutral{color:var(--flat);background:var(--flat-bg)}
+.alerts{display:grid;gap:10px;margin:22px 0}.alert{border:1px solid #ffd0cc;border-left:5px solid var(--bad);background:var(--bad-bg);border-radius:var(--radius);padding:13px 15px;font-weight:800}.alert-ok{border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);padding:12px 14px;color:var(--muted);font-weight:800}
+.focus{background:var(--blue-bg);border-color:#cfe0ff}.focus h2{color:var(--ink)}.focus ul,.comment-list{margin:0;padding-left:20px}.focus li,.comment-list li{margin:7px 0}.comment-list li{font-size:15px}.flow-note{font-size:13px;color:var(--muted);margin:-5px 0 15px}
+.table-tools{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:4px 0 12px}.search{min-width:300px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);max-height:560px;background:var(--panel)}
+button{font:inherit;border:1px solid var(--line-strong);border-radius:8px;background:var(--input-bg);padding:9px 13px;color:var(--ink);font-weight:800;cursor:pointer}button:hover{background:var(--row-hover)}.filter-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 14px}.filter-tools label{display:flex;gap:7px;align-items:center;color:var(--ink);font-weight:700}.filter-tools input[type="checkbox"]{width:16px;height:16px}.filter-tools .search{min-width:260px}.high-rank td{background:var(--high-bg)}.high-rank:hover td{background:var(--high-hover)}
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel)}th,td{padding:13px 14px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:left;vertical-align:middle}th{position:sticky;top:0;z-index:2;background:var(--table-head);font-size:12.5px;font-weight:820;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line-strong)}td{font-size:14px}td.text,th.text{text-align:left;white-space:normal;min-width:180px}td.num,th.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}#priority-table th:nth-child(2),#priority-table td:nth-child(2),#priority-table th:nth-child(3),#priority-table td:nth-child(3),#deep-dive-table th:nth-child(1),#deep-dive-table td:nth-child(1),#deep-dive-table th:nth-child(2),#deep-dive-table td:nth-child(2),#segments-table th:first-child,#segments-table td:first-child,#segments-table th:last-child,#segments-table td:last-child{text-align:left;white-space:normal;min-width:220px}#priority-table th:nth-child(1),#priority-table td:nth-child(1),#priority-table th:nth-child(4),#priority-table td:nth-child(4),#priority-table th:nth-child(5),#priority-table td:nth-child(5),#deep-dive-table th:nth-child(n+3),#deep-dive-table td:nth-child(n+3),#segments-table th:nth-child(n+2):nth-child(-n+5),#segments-table td:nth-child(n+2):nth-child(-n+5){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}td:first-child,th:first-child{text-align:left}tbody tr:nth-child(even){background:var(--row-alt)}tbody tr:hover{background:var(--row-hover)}tbody tr:last-child td{border-bottom:0}.sort-mark{font-size:11px;color:#98a2b3;margin-left:6px}
+details.panel{padding:0;overflow:hidden}details.panel>summary{list-style:none;cursor:pointer;padding:18px 22px;font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:18px;border-radius:var(--radius);transition:background-color .16s ease}details.panel>summary:hover{background:var(--row-hover)}details.panel>summary::-webkit-details-marker{display:none}details.panel>summary::after{content:"▶";font-size:14px;color:#667085;transition:transform .18s ease}details.panel[open]>summary{border-bottom:1px solid var(--line);border-bottom-left-radius:0;border-bottom-right-radius:0}details.panel[open]>summary::after{content:"▼"}.details-body{padding:18px 22px 22px;animation:openSection .18s ease-out}@keyframes openSection{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:18px}figure{margin:0;border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:var(--panel)}img{width:100%;height:auto;display:block}figcaption{font-size:13px;color:var(--muted);margin-top:9px}.two-col{grid-template-columns:1fr 1fr}
-@media(max-width:900px){.topbar{display:block}.header-tools{justify-content:flex-start;margin-top:18px}.selector{margin-top:0}.two-col{grid-template-columns:1fr}.page{padding:24px 18px}.search{min-width:0;width:100%}.card-value{font-size:31px}.table-wrap{max-height:none}}
-@media(max-width:640px){.page{padding:18px 12px 48px}h1{font-size:28px}.panel{padding:18px 14px}.cards{grid-template-columns:1fr}.filter-tools,.table-tools,.header-tools{align-items:stretch}.filter-tools>*{width:100%}.selector{justify-content:space-between}.charts{grid-template-columns:1fr}th,td{padding:12px 10px}.updated-at{font-size:12px}}
+@media(max-width:900px){.topbar{position:static;display:block}.header-tools{justify-content:flex-start;margin-top:18px}.selector{margin-top:0}.two-col{grid-template-columns:1fr}.page{padding:24px 18px}.search{min-width:0;width:100%}.card-value{font-size:30px}.table-wrap{max-height:none}}
+@media(max-width:640px){.page{padding:18px 12px 48px}h1{font-size:27px}.panel{padding:17px 13px}.cards{grid-template-columns:1fr}.filter-tools,.table-tools,.header-tools{align-items:stretch}.filter-tools>*{width:100%}.selector{justify-content:space-between;border-radius:8px}.charts{grid-template-columns:1fr}th,td{padding:11px 10px}.updated-at{font-size:12px}}
 @media print{.page{max-width:none;padding:18px}.selector,.table-tools{display:none}.panel,details.panel{break-inside:avoid;box-shadow:none}.charts{grid-template-columns:repeat(2,1fr)}details.panel:not([open]) .details-body{display:block}}
 """
 
@@ -2414,6 +2424,90 @@ def write_csv(df: pd.DataFrame, path: Path) -> None:
     df.to_csv(path, index=False, encoding="utf-8-sig", quoting=csv.QUOTE_MINIMAL)
 
 
+def make_followup_high_value_rows(df: pd.DataFrame) -> tuple[str, pd.DataFrame]:
+    latest_month = str(df["month"].max())
+    target = df[(df["month"] == latest_month) & (df["status"] == "未成約") & (df["amount"] >= 10000)].copy()
+    if target.empty:
+        columns = ["優先度", "データNo", "査定額", "カテゴリ", "点数", "利用回数", "初回/リピート", "査定方法", "コメント"]
+        return latest_month, pd.DataFrame(columns=columns)
+
+    priority_data = [
+        high_value_priority_values(int(row["repeat_count"]), float(row["amount"]))
+        for _, row in target.iterrows()
+    ]
+    target["_priority"] = [item[0] for item in priority_data]
+    target["_priority_order"] = [item[1] for item in priority_data]
+    target["_priority_comment"] = [item[2] for item in priority_data]
+    target = target.sort_values(["_priority_order", "amount", "data_no"], ascending=[True, False, True])
+
+    rows = []
+    for _, row in target.iterrows():
+        rows.append(
+            {
+                "優先度": row["_priority"],
+                "データNo": row["data_no"],
+                "査定額": int(row["amount"]),
+                "カテゴリ": row["category"],
+                "点数": int(row["points"]),
+                "利用回数": int(row["repeat_count"]),
+                "初回/リピート": "初回" if row["repeat_count"] <= 1 else "リピート",
+                "査定方法": row["method"],
+                "コメント": row["_priority_comment"],
+            }
+        )
+    return latest_month, pd.DataFrame(rows)
+
+
+def write_followup_email_files(df: pd.DataFrame, output_dir: Path, recipient: str = FOLLOWUP_EMAIL_TO) -> None:
+    latest_month, followup = make_followup_high_value_rows(df)
+    csv_path = output_dir / "followup_high_value_unconverted.csv"
+    eml_path = output_dir / "followup_high_value_unconverted.eml"
+    subject_path = output_dir / "followup_high_value_unconverted_subject.txt"
+    body_path = output_dir / "followup_high_value_unconverted_body.txt"
+    write_csv(followup, csv_path)
+
+    subject = f"【自動送信テスト】高額未成約一覧（優先度順）{latest_month}"
+    preview = followup.head(20)
+    body_lines = [
+        "高額未成約一覧を優先度順で送付します。",
+        "",
+        f"対象月: {latest_month}",
+        f"対象件数: {len(followup)}件",
+        "条件: 未成約 / 査定額10,000円以上 / 優先度順",
+        "",
+        "優先度ルール:",
+        "S = 初回かつ20,000円以上",
+        "A = 初回かつ10,000円以上",
+        "B = リピーター20,000円以上",
+        "C = その他",
+        "",
+        "上位20件:",
+    ]
+    if preview.empty:
+        body_lines.append("対象案件はありません。")
+    else:
+        for _, row in preview.iterrows():
+            body_lines.append(
+                f"{row['優先度']} / No.{row['データNo']} / {int(row['査定額']):,}円 / {row['カテゴリ']} / {row['初回/リピート']} / {row['査定方法']} / {row['コメント']}"
+            )
+    body_lines += ["", "CSVを添付しています。"]
+
+    body = "\n".join(body_lines)
+    subject_path.write_text(subject, encoding="utf-8")
+    body_path.write_text(body, encoding="utf-8")
+
+    message = EmailMessage()
+    message["To"] = recipient
+    message["Subject"] = subject
+    message.set_content(body)
+    message.add_attachment(csv_path.read_bytes(), maintype="text", subtype="csv", filename=csv_path.name)
+    eml_path.write_bytes(message.as_bytes())
+    log(f"[INFO] follow-up csv written: {csv_path}")
+    log(f"[INFO] follow-up subject written: {subject_path}")
+    log(f"[INFO] follow-up body written: {body_path}")
+    log(f"[INFO] follow-up email draft written: {eml_path}")
+
+
 def get_font(size: int):
     if ImageFont is None:
         return None
@@ -2646,6 +2740,7 @@ def analyze(root: Path, output_dir: Path, open_html: bool = True) -> None:
     write_csv(category_summary, output_dir / "category_summary.csv")
     write_csv(method_summary, output_dir / "method_summary.csv")
     write_csv(deep_dive, output_dir / "deep_dive_unconverted.csv")
+    write_followup_email_files(df, output_dir)
 
     charts_dir = output_dir / "charts"
     save_charts(monthly, repeat_summary, amount_summary, category_summary, charts_dir)
