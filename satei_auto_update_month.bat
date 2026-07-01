@@ -2,7 +2,19 @@
 setlocal
 set "REPO=%~dp0"
 set "REPO=%REPO:~0,-1%"
-set /p TARGET_MONTH=YYYY-MMを入力してください 例 2026-06: 
+echo.
+echo Fetch BANSO assessment data for a selected month, then send the follow-up mail for that month.
+echo.
+set /p TARGET_MONTH=Enter target month YYYY-MM, example 2026-06: 
+if "%TARGET_MONTH%"=="" (
+  echo.
+  echo Target month is empty.
+  exit /b 1
+)
+echo.
+echo Running. Please keep this window open until it finishes.
+echo Log: "%REPO%\satei_auto_update_%TARGET_MONTH%.log"
+echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\download_satei_csv_and_update.ps1" -ConfigPath "%REPO%\satei_auto_config.json" -Month "%TARGET_MONTH%" *> "%REPO%\satei_auto_update_%TARGET_MONTH%.log"
 if errorlevel 1 (
   echo.
@@ -12,3 +24,4 @@ if errorlevel 1 (
 )
 echo.
 echo Done.
+echo You can close this window manually.
