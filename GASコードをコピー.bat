@@ -1,4 +1,4 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-call "%~dp0dashboard_update.bat"
+call "%~dp0copy_gas_code.bat"

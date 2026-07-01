@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $RepoDir
+$mailSent = $false
 
 $python = "C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 if (-not (Test-Path -LiteralPath $python)) {
@@ -30,19 +31,52 @@ if (Test-Path -LiteralPath "outputs\followup_high_value_unconverted.csv") {
     if (Test-Path -LiteralPath $draft) {
       Start-Process -FilePath $draft
     }
+  } else {
+    $mailSent = $true
   }
 }
 
 Write-Host ""
 Write-Host "Staging dashboard files..."
-& git add index.html analyze_assessment.py .gitignore GAS_SETUP.md followup_mail_config.example.json dashboard_update.bat dashboard_update.ps1 copy_gas_code.bat copy_gas_code.ps1 mail_automation_check.bat setup_followup_mail_config.ps1 send_followup_email_gas.ps1 test_followup_mail_gas.ps1 test_gas_endpoint.ps1 gas/followup_mailer.gs
-& git add "ダッシュボード更新.bat" "メール送信設定.bat" "GASメール送信テスト.bat" "GAS接続テスト.bat" "GASコードを開く.bat" "GASコードをコピー.bat" "メール自動化チェック.bat"
+$dashboardFiles = @(
+  "index.html",
+  "analyze_assessment.py",
+  ".gitignore",
+  "GAS_SETUP.md",
+  "followup_mail_config.example.json",
+  "dashboard_update.bat",
+  "dashboard_update.ps1",
+  "copy_gas_code.bat",
+  "copy_gas_code.ps1",
+  "mail_automation_check.bat",
+  "setup_followup_mail_config.ps1",
+  "send_followup_email_gas.ps1",
+  "test_followup_mail_gas.ps1",
+  "test_gas_endpoint.ps1",
+  "gas/followup_mailer.gs"
+)
+
+foreach ($file in $dashboardFiles) {
+  if (Test-Path -LiteralPath $file) {
+    & git add -- $file
+    if ($LASTEXITCODE -ne 0) {
+      throw "Git add failed: $file"
+    }
+  }
+}
+
+Get-ChildItem -LiteralPath $RepoDir -Filter "*.bat" -File | ForEach-Object {
+  & git add -- $_.FullName
+  if ($LASTEXITCODE -ne 0) {
+    throw "Git add failed: $($_.FullName)"
+  }
+}
 
 & git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
   $stamp = Get-Date -Format "yyyy-MM-dd_HHmm"
   Write-Host "Committing changes..."
-  & git commit -m "ダッシュボード自動更新 $stamp"
+  & git commit -m "dashboard auto update $stamp"
 } else {
   Write-Host "No dashboard file changes to commit."
 }
@@ -55,5 +89,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "Done: dashboard has been updated, mail was sent, and GitHub was pushed."
+if ($mailSent) {
+  Write-Host "Done: dashboard has been updated, mail was sent, and GitHub was pushed."
+} else {
+  Write-Host "Done: dashboard has been updated and GitHub was pushed. Mail was not sent automatically; draft was opened instead."
+}
 Write-Host "GitHub Pages may take a few minutes to refresh. Use Ctrl+F5 on the page."
