@@ -55,7 +55,7 @@ if ($Month -notmatch '^\d{4}-\d{2}$') {
 if ([string]::IsNullOrWhiteSpace($webAppUrl)) {
   throw "WebAppUrl is empty in $ConfigPath"
 }
-if (-not ($webAppUrl -match '^https://script\.google\.com/(a/macros/[^/]+/)?macros/s/')) {
+if (-not ($webAppUrl -match '^https://script\.google\.com/(macros/s/|a/macros/[^/]+/s/)')) {
   throw "WebAppUrl must be a Google Apps Script Web App URL. Current value: $webAppUrl"
 }
 if ([string]::IsNullOrWhiteSpace($token)) {
