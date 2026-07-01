@@ -55,7 +55,7 @@ if ($Month -notmatch '^\d{4}-\d{2}$') {
 if ([string]::IsNullOrWhiteSpace($webAppUrl)) {
   throw "WebAppUrl is empty in $ConfigPath"
 }
-if (-not $webAppUrl.StartsWith("https://script.google.com/macros/s/")) {
+if (-not ($webAppUrl -match '^https://script\.google\.com/(a/macros/[^/]+/)?macros/s/')) {
   throw "WebAppUrl must be a Google Apps Script Web App URL. Current value: $webAppUrl"
 }
 if ([string]::IsNullOrWhiteSpace($token)) {
@@ -83,6 +83,9 @@ function Invoke-GasJson {
   $text = & $curl -L --http1.1 --max-time $TimeoutSeconds --silent --show-error $uri 2>&1
   if ($LASTEXITCODE -ne 0) {
     throw "curl failed for ${Action}: $text"
+  }
+  if ($text -notmatch '^\s*\{') {
+    throw "GAS ${Action} did not return JSON. Please check Web App access setting. It may require Google sign-in."
   }
 
   $json = $text | ConvertFrom-Json
@@ -116,6 +119,9 @@ $uri = $webAppUrl + "?action=exportCsvJson&month=" + [uri]::EscapeDataString($Mo
 $responseText = & $curl -L --http1.1 --max-time 180 --silent --show-error $uri 2>&1
 if ($LASTEXITCODE -ne 0) {
   throw "curl failed: $responseText"
+}
+if ($responseText -notmatch '^\s*\{') {
+  throw "GAS exportCsvJson did not return JSON. Please check Web App access setting. It may require Google sign-in."
 }
 
 $response = $responseText | ConvertFrom-Json
