@@ -7,11 +7,32 @@ $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $RepoDir
 $mailSent = $false
 
-$python = "C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-if (-not (Test-Path -LiteralPath $python)) {
-  $python = "python"
+function Resolve-Python {
+  $localCandidates = @(
+    (Join-Path $RepoDir ".venv\Scripts\python.exe"),
+    (Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe")
+  )
+
+  foreach ($candidate in $localCandidates) {
+    if (Test-Path -LiteralPath $candidate) {
+      return $candidate
+    }
+  }
+
+  $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+  if ($pythonCommand) {
+    return $pythonCommand.Source
+  }
+
+  $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+  if ($pyLauncher) {
+    return "py"
+  }
+
+  throw "Python was not found. Please install Python 3 and make sure python is available from PATH."
 }
 
+$python = Resolve-Python
 $assessmentDataFolderName = "$([char]0x67FB)$([char]0x5B9A)$([char]0x30C7)$([char]0x30FC)$([char]0x30BF)"
 $dataRoot = Join-Path (Join-Path $env:USERPROFILE "Desktop") $assessmentDataFolderName
 

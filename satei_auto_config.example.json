@@ -5,6 +5,6 @@
   "StartFetch": true,
   "PollSeconds": 90,
   "MaxWaitMinutes": 60,
-  "DataRoot": "C:\\Users\\user\\Desktop\\査定データ\\data",
-  "RepoDir": "C:\\Users\\user\\Desktop\\BANSO-dashboard"
+  "DataRoot": "",
+  "RepoDir": ""
 }
