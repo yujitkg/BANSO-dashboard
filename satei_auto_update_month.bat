@@ -15,7 +15,7 @@ echo.
 echo Running. Please keep this window open until it finishes.
 echo Log: "%REPO%\satei_auto_update_%TARGET_MONTH%.log"
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\download_satei_csv_and_update.ps1" -ConfigPath "%REPO%\satei_auto_config.json" -Month "%TARGET_MONTH%" *> "%REPO%\satei_auto_update_%TARGET_MONTH%.log"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\download_satei_csv_and_update.ps1" -ConfigPath "%REPO%\satei_auto_config.json" -Month "%TARGET_MONTH%" > "%REPO%\satei_auto_update_%TARGET_MONTH%.log" 2>&1
 if errorlevel 1 (
   echo.
   echo Satei auto update failed.
