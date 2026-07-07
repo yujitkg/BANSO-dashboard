@@ -18,7 +18,7 @@
 4. 画面の質問に沿って、以下を入力します。
    - BANSOデータ取得GASのWebアプリURL
    - `SATEI_EXPORT_TOKEN`
-   - CSV保存先。空欄なら `デスクトップ\査定データ\data`
+   - CSV保存先。空欄なら `BANSO-dashboard\data`
    - メール送信用GASのWebアプリURL
    - 送信先メールアドレス。通常は `renraku@y-takumi.jp`
    - `FOLLOWUP_MAIL_TOKEN`
@@ -36,4 +36,4 @@
 - Pythonが見つからない場合: Python 3をインストールし、PATHに追加します。
 - GASがJSONを返さない場合: Webアプリの公開設定を確認します。
 - pushに失敗する場合: GitHub Desktopでログイン状態とremoteを確認します。
-- CSV保存先を変えたい場合: `satei_auto_config.json` の `DataRoot` を変更します。
+- CSV保存先を変えたい場合: `satei_auto_config.json` の `DataRoot` を変更します。通常は `BANSO-dashboard\data` のままでOKです。

@@ -9,6 +9,8 @@ GitHub Pages公開用の単体HTMLダッシュボードです。
 
 元データや生成物フォルダは `.gitignore` で除外しています。
 
+ローカルの査定CSVは `data\YYYY-MM` に保存します。`data/` はGitHubへ公開しません。
+
 ## 別PCで使う場合
 
 1. GitHub Desktopでこのリポジトリをcloneします。

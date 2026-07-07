@@ -11,8 +11,7 @@ function Write-Step {
 }
 
 function Get-DefaultDataRoot {
-  $folderName = "$([char]0x67FB)$([char]0x5B9A)$([char]0x30C7)$([char]0x30FC)$([char]0x30BF)"
-  return Join-Path (Join-Path (Join-Path $env:USERPROFILE "Desktop") $folderName) "data"
+  return Join-Path $scriptDir "data"
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

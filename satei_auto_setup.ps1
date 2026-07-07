@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $repoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $configPath = Join-Path $repoDir "satei_auto_config.json"
 
-$defaultDataRoot = Join-Path (Join-Path (Join-Path $env:USERPROFILE "Desktop") "$([char]0x67FB)$([char]0x5B9A)$([char]0x30C7)$([char]0x30FC)$([char]0x30BF)") "data"
+$defaultDataRoot = Join-Path $repoDir "data"
 
 Write-Host ""
 Write-Host "BANSO satei auto config setup"

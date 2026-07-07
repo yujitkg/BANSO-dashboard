@@ -33,8 +33,10 @@ function Resolve-Python {
 }
 
 $python = Resolve-Python
-$assessmentDataFolderName = "$([char]0x67FB)$([char]0x5B9A)$([char]0x30C7)$([char]0x30FC)$([char]0x30BF)"
-$dataRoot = Join-Path (Join-Path $env:USERPROFILE "Desktop") $assessmentDataFolderName
+$dataRoot = Join-Path $RepoDir "data"
+if (-not (Test-Path -LiteralPath $dataRoot)) {
+  throw "Data folder was not found: $dataRoot"
+}
 
 Write-Host "Updating dashboard..."
 & $python "analyze_assessment.py" --root $dataRoot --output "outputs" --no-open
