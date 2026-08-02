@@ -107,9 +107,7 @@ function table(id, headers, rows, opts={}){
 const highValueHeaders = ['優先度','データNo','査定額','カテゴリ','点数','利用回数','初回/リピート','査定方法','コメント'];
 function csvValue(value){
   const text = String(value ?? '');
-  return /[",
-
-]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 function downloadCsv(filename, headers, rows){
   const csv = '\ufeff' + [headers.join(','), ...rows.map(row=>headers.map(header=>csvValue(row[header])).join(','))].join('\n');
